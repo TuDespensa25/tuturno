@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uñas Perfectas - Reserva de Turnos</title>
+    <meta name="description" content="Reserva tu turno en Uñas Perfectas. Manicuría profesional.">
+    
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .animate-fade-in {
+                animation: fadeIn 0.5s ease-out forwards;
+            }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Load Scripts -->
+    <script type="text/babel" src="utils/api.js"></script>
+    <script type="text/babel" src="utils/timeLogic.js"></script>
+    <script type="text/babel" src="components/Header.js"></script>
+    <script type="text/babel" src="components/ServiceSelection.js"></script>
+    <script type="text/babel" src="components/Calendar.js"></script>
+    <script type="text/babel" src="components/TimeSlots.js"></script>
+    <script type="text/babel" src="components/BookingForm.js"></script>
+    <script type="text/babel" src="components/Confirmation.js"></script>
+    <script type="text/babel" src="components/WelcomeScreen.js"></script>
+    <script type="text/babel" src="components/WhatsAppButton.js"></script>
+    <script type="text/babel" src="app.js"></script>
+</body>
+</html>
