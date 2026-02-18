@@ -1,4 +1,10 @@
-// Utility functions for Trickle Database interactions
+// utils/api.js - Versión para Supabase
+
+// ============================================
+// CREDENCIALES DE SUPABASE (YA CONFIGURADAS)
+// ============================================
+const SUPABASE_URL = 'https://torwzztbyeryptydytwr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvcnd6enRieWVyeXB0eWR5dHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzODAxNzIsImV4cCI6MjA4Njk1NjE3Mn0.yISCKznhbQt5UAW5lwSuG2A2NUS71GSbirhpa9mMpyI';
 
 const TABLE_NAME = 'turnos';
 
@@ -7,20 +13,21 @@ const TABLE_NAME = 'turnos';
  */
 async function getBookingsByDate(dateStr) {
     try {
-        // Since we can't filter server-side easily without advanced API, 
-        // we'll fetch all and filter client-side for this MVP. 
-        // In a real app with many records, we'd want server-side filtering.
-        // For 2026, we assume the dataset is manageable for now.
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?fecha=eq.${dateStr}&estado=neq.Cancelado&select=*`,
+            {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
         
-        // Using a limit of 1000 to cover enough grounds. 
-        // If data grows, we need pagination logic.
-        const response = await trickleListObjects(TABLE_NAME, 1000, true);
+        if (!response.ok) throw new Error('Error fetching bookings');
         
-        if (!response || !response.items) return [];
-
-        return response.items
-            .map(item => ({...item.objectData, id: item.objectId}))
-            .filter(booking => booking.fecha === dateStr && booking.estado !== 'Cancelado');
+        const data = await response.json();
+        return data;
     } catch (error) {
         console.error('Error fetching bookings:', error);
         return [];
@@ -32,8 +39,23 @@ async function getBookingsByDate(dateStr) {
  */
 async function createBooking(bookingData) {
     try {
-        const result = await trickleCreateObject(TABLE_NAME, bookingData);
-        return result;
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/${TABLE_NAME}`,
+            {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify(bookingData)
+            }
+        );
+        
+        if (!response.ok) throw new Error('Error creating booking');
+        
+        return { success: true };
     } catch (error) {
         console.error('Error creating booking:', error);
         throw error;
@@ -45,8 +67,20 @@ async function createBooking(bookingData) {
  */
 async function getAllBookings() {
     try {
-        const response = await trickleListObjects(TABLE_NAME, 100, true);
-        return response.items ? response.items.map(item => ({...item.objectData, id: item.objectId})) : [];
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*&order=fecha.desc,hora_inicio.asc`,
+            {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            }
+        );
+        
+        if (!response.ok) throw new Error('Error fetching all bookings');
+        
+        const data = await response.json();
+        return data;
     } catch (error) {
         console.error('Error fetching all bookings:', error);
         return [];
@@ -58,8 +92,22 @@ async function getAllBookings() {
  */
 async function updateBookingStatus(id, newStatus) {
     try {
-        const result = await trickleUpdateObject(TABLE_NAME, id, { estado: newStatus });
-        return result;
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?id=eq.${id}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ estado: newStatus })
+            }
+        );
+        
+        if (!response.ok) throw new Error('Error updating booking');
+        
+        return { success: true };
     } catch (error) {
         console.error('Error updating booking:', error);
         throw error;
