@@ -169,6 +169,16 @@ function App() {
         </div>
     );
 }
+const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+const isSlowConnection = connection && (
+    connection.effectiveType === 'slow-2g' || 
+    connection.effectiveType === '2g' ||
+    connection.downlink < 0.5
+);
 
+if (isSlowConnection) {
+    // Modo ultra liviano: ocultar animaciones, reducir calidad
+    document.body.classList.add('slow-connection');
+}
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);

@@ -156,4 +156,42 @@ async function updateBookingStatus(id, newStatus) {
         console.error('Error updating booking:', error);
         throw error;
     }
+    const response = await fetch(url, {
+    headers: {
+        'Accept-Encoding': 'gzip, deflate', // Comprime la respuesta
+        'apikey': SUPABASE_ANON_KEY,
+        // ...
+    }
+});
+// Cache en localStorage (dura para siempre, hasta que cambies la app)
+const CACHE_KEY = 'turnos_cache_v1';
+
+async function getBookingsByDate(dateStr) {
+    // Intentar leer de localStorage primero
+    const cached = localStorage.getItem(`${CACHE_KEY}_${dateStr}`);
+    if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        // Si el cache tiene menos de 1 hora, usarlo
+        if (Date.now() - timestamp < 60 * 60 * 1000) {
+            return data;
+        }
+    }
+    
+    try {
+        const response = await fetch(...);
+        const data = await response.json();
+        
+        // Guardar en localStorage
+        localStorage.setItem(`${CACHE_KEY}_${dateStr}`, JSON.stringify({
+            data,
+            timestamp: Date.now()
+        }));
+        
+        return data;
+    } catch (error) {
+        // Si hay error de red, devolver cache aunque esté viejo
+        if (cached) return JSON.parse(cached).data;
+        return [];
+    }
+}
 }
