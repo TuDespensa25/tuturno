@@ -1,10 +1,12 @@
+// components/ServiceSelection.js
+
 function ServiceSelection({ onSelect, selectedService }) {
     const services = [
-        { id: 1, name: "Esmaltado común", duration: 30 },
-        { id: 2, name: "Esmaltado semipermanente", duration: 30 },
-        { id: 3, name: "Kapping", duration: 60 },
-        { id: 4, name: "Esculpidas", duration: 90 },
-        { id: 5, name: "Capping + esmaltado", duration: 90 },
+        { id: 1, name: "💅 Esmaltado semipermanente manos y pies", duration: 60 },
+        { id: 2, name: "✨ Refill en manos", duration: 90 },
+        { id: 3, name: "🦶 Refill y pedicura", duration: 120 },
+        { id: 4, name: "🌸 Refill manos y pedicura con parafina", duration: 180 },
+        { id: 5, name: "👣 Pedicura solo", duration: 30 },
     ];
 
     return (
@@ -27,7 +29,7 @@ function ServiceSelection({ onSelect, selectedService }) {
                     >
                         <div>
                             <span className="font-medium text-gray-900 block group-hover:text-pink-600 transition-colors">
-                                💅 {service.name}
+                                {service.name}
                             </span>
                         </div>
                         <div className="flex items-center text-gray-500 text-sm bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
