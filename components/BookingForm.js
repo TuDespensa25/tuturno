@@ -4,6 +4,15 @@ function BookingForm({ service, date, time, onSubmit, onCancel }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
 
+    // Función para formatear hora a 12h
+    const formatTo12Hour = (timeStr) => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        let hour12 = hours % 12;
+        hour12 = hour12 === 0 ? 12 : hour12;
+        return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!name.trim() || !whatsapp.trim()) return;
@@ -24,12 +33,12 @@ function BookingForm({ service, date, time, onSubmit, onCancel }) {
 
             const endTime = calculateEndTime(time, service.duration);
 
-            // Guardar el número completo con +53
-            const numeroCompleto = `+53${whatsapp}`;
+            const numeroLimpio = whatsapp.replace(/\D/g, '');
+            const numeroCompleto = `53${numeroLimpio}`;
 
             const bookingData = {
                 cliente_nombre: name,
-                cliente_whatsapp: numeroCompleto, // Guardamos +53 + número
+                cliente_whatsapp: numeroCompleto,
                 servicio: service.name,
                 duracion: service.duration,
                 fecha: date,
@@ -60,6 +69,7 @@ function BookingForm({ service, date, time, onSubmit, onCancel }) {
                 </div>
 
                 <div className="space-y-4">
+                    {/* Resumen del turno - AHORA CON HORA EN FORMATO 12H */}
                     <div className="bg-pink-50 p-4 rounded-xl border border-pink-100 space-y-2">
                         <div className="flex items-center gap-3 text-gray-700">
                             <div className="icon-sparkles text-pink-500"></div>
@@ -71,7 +81,7 @@ function BookingForm({ service, date, time, onSubmit, onCancel }) {
                         </div>
                         <div className="flex items-center gap-3 text-gray-700">
                             <div className="icon-clock text-pink-500"></div>
-                            <span>{time} ({service.duration} min)</span>
+                            <span>{formatTo12Hour(time)} ({service.duration} min)</span>
                         </div>
                     </div>
 
@@ -88,7 +98,6 @@ function BookingForm({ service, date, time, onSubmit, onCancel }) {
                             />
                         </div>
 
-                        {/* CAMPO WHATSAPP CON +53 AUTOMÁTICO PARA CUBA */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Tu WhatsApp <span className="text-gray-400 text-xs">(para notificaciones)</span>
@@ -101,7 +110,6 @@ function BookingForm({ service, date, time, onSubmit, onCancel }) {
                                     type="tel"
                                     value={whatsapp}
                                     onChange={(e) => {
-                                        // Solo permitir números
                                         const value = e.target.value.replace(/\D/g, '');
                                         setWhatsapp(value);
                                     }}

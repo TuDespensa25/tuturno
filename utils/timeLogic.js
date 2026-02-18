@@ -1,4 +1,4 @@
-// Time manipulation and slot generation logic
+// utils/timeLogic.js - Versión con formato 12h (AM/PM)
 
 // Helper to convert "HH:mm" to minutes since midnight
 function timeToMinutes(timeStr) {
@@ -6,37 +6,49 @@ function timeToMinutes(timeStr) {
     return hours * 60 + minutes;
 }
 
-// Helper to convert minutes since midnight to "HH:mm"
+// Helper to convert minutes since midnight to "HH:mm" (formato 24h para BD)
 function minutesToTime(totalMinutes) {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
-// Generate all possible start times based on service duration
-function generateBaseSlots(startHourStr, endHourStr, durationMinutes) {
-    const startMins = timeToMinutes(startHourStr);
-    const endMins = timeToMinutes(endHourStr);
-    const slots = [];
+// NUEVA: Convertir hora 24h a formato 12h con AM/PM
+function formatTo12Hour(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    let hour12 = hours % 12;
+    hour12 = hour12 === 0 ? 12 : hour12; // 0 -> 12 AM
+    return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
 
-    // Loop from start time until (end time - duration)
-    // We assume slots start every `duration` minutes (as per requirement table), 
-    // BUT the requirement table shows a simplified pattern. 
-    // Requirement says: "saltando según la duración del servicio seleccionado"
-    // 30 min -> 9:00, 9:30, 10:00...
-    // 60 min -> 9:00, 10:00, 11:00...
-    // 90 min -> 9:00, 10:30, 12:00...
+// NUEVA: Convertir hora 12h a formato 24h (para procesamiento interno)
+function parse12HourTo24Hour(timeStr, period) {
+    let [hours, minutes] = timeStr.split(':').map(Number);
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+
+// Generar slots respetando bloques de horario (9-12 y 13-18) - Internamente usa 24h
+function generateBaseSlots(durationMinutes) {
+    const slots = [];
     
-    // However, usually flexible booking allows starting at 9:30 for a 60min service if 9:00-9:30 is free?
-    // The requirement explicitly gives a table:
-    // | 60 min | 9:00, 10:00, 11:00... |
-    // | 90 min | 9:00, 10:30, 12:00... |
-    // This implies fixed slots based on duration intervals starting from 9:00.
+    // Bloque mañana: 9:00 a 12:00
+    const morningStart = timeToMinutes("09:00");
+    const morningEnd = timeToMinutes("12:00");
     
-    // We will follow the requirement's explicit table logic strictly.
-    // Interval = durationMinutes.
+    // Bloque tarde: 13:00 a 18:00
+    const afternoonStart = timeToMinutes("13:00");
+    const afternoonEnd = timeToMinutes("18:00");
     
-    for (let current = startMins; current + durationMinutes <= endMins; current += durationMinutes) {
+    // Generar slots en la mañana
+    for (let current = morningStart; current + durationMinutes <= morningEnd; current += durationMinutes) {
+        slots.push(minutesToTime(current));
+    }
+    
+    // Generar slots en la tarde
+    for (let current = afternoonStart; current + durationMinutes <= afternoonEnd; current += durationMinutes) {
         slots.push(minutesToTime(current));
     }
     
