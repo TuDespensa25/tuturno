@@ -1,13 +1,24 @@
 function Confirmation({ booking, onReset }) {
     React.useEffect(() => {
-        // Construct WhatsApp URL
-        const phone = "5354066204";
+        const phone = "5354066204"; // Número correcto para Cuba
         const text = `📅 NUEVO TURNO - UÑAS MÁGICAS\n👤 Cliente: ${booking.cliente_nombre}\n💅 Servicio: ${booking.servicio} (${booking.duracion} min)\n📆 Fecha: ${booking.fecha}\n⏰ Hora: ${booking.hora_inicio}`;
         const encodedText = encodeURIComponent(text);
-        const url = `https://wa.me/${phone}?text=${encodedText}`;
         
-        // Open WhatsApp in new tab
-        window.open(url, '_blank');
+        // Detectar si es iPhone/iPad
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        
+        if (isIOS) {
+            // En iPhone: intentar abrir la app directamente con whatsapp://
+            window.location.href = `whatsapp://send?phone=${phone}&text=${encodedText}`;
+            
+            // Fallback: si no tiene la app, abrir versión web
+            setTimeout(() => {
+                window.location.href = `https://wa.me/${phone}?text=${encodedText}`;
+            }, 500);
+        } else {
+            // En Android/PC: usar web normal
+            window.location.href = `https://wa.me/${phone}?text=${encodedText}`;
+        }
     }, [booking]);
 
     return (
