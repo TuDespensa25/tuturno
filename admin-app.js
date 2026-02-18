@@ -19,11 +19,38 @@ function AdminApp() {
         fetchBookings();
     }, []);
 
-    const handleStatusChange = async (id, newStatus) => {
+    // 🔥 FUNCIÓN ACTUALIZADA: Envía WhatsApp al cliente
+    const handleStatusChange = async (id, newStatus, bookingData) => {
         if (!confirm(`¿Estás seguro de cambiar el estado a ${newStatus}?`)) return;
         
         try {
+            // 1. Actualizar en Supabase
             await updateBookingStatus(id, newStatus);
+            
+            // 2. Enviar WhatsApp al cliente según el nuevo estado
+            const phone = bookingData.cliente_whatsapp; // Número del cliente
+            let mensaje = "";
+            
+            if (newStatus === "Confirmado") {
+                mensaje = `✅ *TURNO CONFIRMADO* ✅\n\nHola ${bookingData.cliente_nombre}, te confirmamos tu turno en *Uñas Mágicas*:\n\n📅 *Fecha:* ${bookingData.fecha}\n⏰ *Hora:* ${bookingData.hora_inicio}\n💅 *Servicio:* ${bookingData.servicio} (${bookingData.duracion} min)\n\n📱 Ante cualquier cambio, contactanos al +53 54066204\n\n¡Te esperamos! ✨`;
+            } else if (newStatus === "Cancelado") {
+                mensaje = `❌ *TURNO CANCELADO* ❌\n\nHola ${bookingData.cliente_nombre}, lamentamos informarte que tu turno del *${bookingData.fecha}* a las *${bookingData.hora_inicio}* ha sido cancelado.\n\nPor favor, contactanos para reagendar:\n📱 +53 54066204\n\nDisculpá las molestias.`;
+            }
+            
+            const encodedMensaje = encodeURIComponent(mensaje);
+            
+            // Detectar si es iPhone para usar esquema nativo
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            
+            if (isIOS) {
+                window.location.href = `whatsapp://send?phone=${phone}&text=${encodedMensaje}`;
+                setTimeout(() => {
+                    window.location.href = `https://wa.me/${phone}?text=${encodedMensaje}`;
+                }, 500);
+            } else {
+                window.open(`https://wa.me/${phone}?text=${encodedMensaje}`, '_blank');
+            }
+            
             fetchBookings(); // Refresh
         } catch (error) {
             alert('Error al actualizar');
@@ -79,6 +106,7 @@ function AdminApp() {
                                     <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider">
                                         <th className="p-4 font-semibold">Fecha/Hora</th>
                                         <th className="p-4 font-semibold">Cliente</th>
+                                        <th className="p-4 font-semibold">WhatsApp</th>
                                         <th className="p-4 font-semibold">Servicio</th>
                                         <th className="p-4 font-semibold">Estado</th>
                                         <th className="p-4 font-semibold text-right">Acciones</th>
@@ -93,6 +121,16 @@ function AdminApp() {
                                             </td>
                                             <td className="p-4 font-medium text-gray-900">
                                                 {booking.cliente_nombre}
+                                            </td>
+                                            <td className="p-4">
+                                                <a 
+                                                    href={`https://wa.me/${booking.cliente_whatsapp}`} 
+                                                    target="_blank"
+                                                    className="text-green-600 hover:text-green-700 flex items-center gap-1 text-sm"
+                                                >
+                                                    <div className="icon-message-circle"></div>
+                                                    {booking.cliente_whatsapp}
+                                                </a>
                                             </td>
                                             <td className="p-4">
                                                 <div className="text-sm text-gray-900">{booking.servicio}</div>
@@ -110,7 +148,7 @@ function AdminApp() {
                                             <td className="p-4 text-right space-x-2">
                                                 {booking.estado !== 'Confirmado' && booking.estado !== 'Cancelado' && (
                                                     <button 
-                                                        onClick={() => handleStatusChange(booking.id, 'Confirmado')}
+                                                        onClick={() => handleStatusChange(booking.id, 'Confirmado', booking)}
                                                         className="text-green-600 hover:bg-green-50 p-2 rounded-lg transition-colors"
                                                         title="Confirmar"
                                                     >
@@ -119,7 +157,7 @@ function AdminApp() {
                                                 )}
                                                 {booking.estado !== 'Cancelado' && (
                                                     <button 
-                                                        onClick={() => handleStatusChange(booking.id, 'Cancelado')}
+                                                        onClick={() => handleStatusChange(booking.id, 'Cancelado', booking)}
                                                         className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
                                                         title="Cancelar"
                                                     >
@@ -131,7 +169,7 @@ function AdminApp() {
                                     ))}
                                     {filteredBookings.length === 0 && (
                                         <tr>
-                                            <td colSpan="5" className="p-8 text-center text-gray-500">
+                                            <td colSpan="6" className="p-8 text-center text-gray-500">
                                                 No se encontraron turnos.
                                             </td>
                                         </tr>
