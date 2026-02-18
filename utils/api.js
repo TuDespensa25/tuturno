@@ -1,4 +1,4 @@
-// utils/api.js - Versión ultra ligera con cache
+// utils/api.js - Versión ultra ligera con cache (CORREGIDA)
 
 const SUPABASE_URL = 'https://torwzztbyeryptydytwr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvcnd6enRieWVyeXB0eWR5dHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzODAxNzIsImV4cCI6MjA4Njk1NjE3Mn0.yISCKznhbQt5UAW5lwSuG2A2NUS71GSbirhpa9mMpyI';
@@ -14,17 +14,34 @@ const cache = {
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
+// Cache en localStorage (para persistencia)
+const STORAGE_CACHE_KEY = 'turnos_cache_v1';
+
 /**
- * Fetch all bookings for a specific date (con cache)
+ * Fetch all bookings for a specific date (con doble cache: memoria + localStorage)
  */
 async function getBookingsByDate(dateStr) {
-    // Verificar si tenemos cache válido
+    // 1. Verificar cache en memoria primero (más rápido)
     const cached = cache.bookingsByDate.get(dateStr);
     if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
-        console.log('🗂️ Usando cache para', dateStr);
+        console.log('🗂️ Usando cache en memoria para', dateStr);
         return cached.data;
     }
 
+    // 2. Si no está en memoria, verificar localStorage
+    const stored = localStorage.getItem(`${STORAGE_CACHE_KEY}_${dateStr}`);
+    if (stored) {
+        const { data, timestamp } = JSON.parse(stored);
+        // Si el cache tiene menos de 1 hora, usarlo y actualizar memoria
+        if (Date.now() - timestamp < 60 * 60 * 1000) {
+            console.log('💾 Usando cache localStorage para', dateStr);
+            // Actualizar memoria
+            cache.bookingsByDate.set(dateStr, { data, timestamp: Date.now() });
+            return data;
+        }
+    }
+
+    // 3. Si no hay cache válido, hacer petición a Supabase
     try {
         console.log('🌐 Solicitando turnos para', dateStr);
         const response = await fetch(
@@ -33,7 +50,8 @@ async function getBookingsByDate(dateStr) {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept-Encoding': 'gzip, deflate' // Comprimir respuesta
                 }
             }
         );
@@ -42,26 +60,41 @@ async function getBookingsByDate(dateStr) {
         
         const data = await response.json();
         
-        // Guardar en cache
+        // Guardar en memoria
         cache.bookingsByDate.set(dateStr, {
             data: data,
             timestamp: Date.now()
         });
         
+        // Guardar en localStorage
+        localStorage.setItem(`${STORAGE_CACHE_KEY}_${dateStr}`, JSON.stringify({
+            data,
+            timestamp: Date.now()
+        }));
+        
         return data;
     } catch (error) {
         console.error('Error fetching bookings:', error);
-        // Si hay error y tenemos cache viejo, lo devolvemos igual
+        
+        // Si hay error de red y tenemos cache en localStorage, usarlo aunque esté viejo
+        if (stored) {
+            console.log('⚠️ Usando localStorage por error de red');
+            const { data } = JSON.parse(stored);
+            return data;
+        }
+        
+        // Último recurso: cache en memoria aunque esté viejo
         if (cached) {
-            console.log('⚠️ Usando cache viejo por error de red');
+            console.log('⚠️ Usando cache memoria viejo por error de red');
             return cached.data;
         }
+        
         return [];
     }
 }
 
 /**
- * Create a new booking (sin cache, invalida cache relacionado)
+ * Create a new booking (invalida cache)
  */
 async function createBooking(bookingData) {
     try {
@@ -79,10 +112,15 @@ async function createBooking(bookingData) {
             }
         );
         
-        if (!response.ok) throw new Error('Error creating booking');
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            throw new Error('Error creating booking');
+        }
         
         // Limpiar cache de la fecha afectada
         cache.bookingsByDate.delete(bookingData.fecha);
+        localStorage.removeItem(`${STORAGE_CACHE_KEY}_${bookingData.fecha}`);
         cache.allBookings = null;
         
         return { success: true };
@@ -96,7 +134,7 @@ async function createBooking(bookingData) {
  * Fetch all bookings (for admin) - con cache
  */
 async function getAllBookings() {
-    // Verificar cache
+    // Verificar cache en memoria
     if (cache.allBookings && (Date.now() - cache.allBookingsTimestamp) < CACHE_DURATION) {
         return cache.allBookings;
     }
@@ -107,7 +145,9 @@ async function getAllBookings() {
             {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept-Encoding': 'gzip, deflate'
                 }
             }
         );
@@ -128,7 +168,7 @@ async function getAllBookings() {
 }
 
 /**
- * Update booking status (invalida cache)
+ * Update booking status (invalida todo el cache)
  */
 async function updateBookingStatus(id, newStatus) {
     try {
@@ -147,51 +187,21 @@ async function updateBookingStatus(id, newStatus) {
         
         if (!response.ok) throw new Error('Error updating booking');
         
-        // Limpiar todo el cache (porque cambió un estado)
+        // Limpiar todo el cache (porque cambió un estado que afecta disponibilidad)
         cache.bookingsByDate.clear();
         cache.allBookings = null;
+        
+        // También limpiar localStorage
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+            if (key.startsWith(STORAGE_CACHE_KEY)) {
+                localStorage.removeItem(key);
+            }
+        });
         
         return { success: true };
     } catch (error) {
         console.error('Error updating booking:', error);
         throw error;
     }
-    const response = await fetch(url, {
-    headers: {
-        'Accept-Encoding': 'gzip, deflate', // Comprime la respuesta
-        'apikey': SUPABASE_ANON_KEY,
-        // ...
-    }
-});
-// Cache en localStorage (dura para siempre, hasta que cambies la app)
-const CACHE_KEY = 'turnos_cache_v1';
-
-async function getBookingsByDate(dateStr) {
-    // Intentar leer de localStorage primero
-    const cached = localStorage.getItem(`${CACHE_KEY}_${dateStr}`);
-    if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        // Si el cache tiene menos de 1 hora, usarlo
-        if (Date.now() - timestamp < 60 * 60 * 1000) {
-            return data;
-        }
-    }
-    
-    try {
-        const response = await fetch(...);
-        const data = await response.json();
-        
-        // Guardar en localStorage
-        localStorage.setItem(`${CACHE_KEY}_${dateStr}`, JSON.stringify({
-            data,
-            timestamp: Date.now()
-        }));
-        
-        return data;
-    } catch (error) {
-        // Si hay error de red, devolver cache aunque esté viejo
-        if (cached) return JSON.parse(cached).data;
-        return [];
-    }
-}
 }
