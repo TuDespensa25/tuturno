@@ -1,7 +1,7 @@
 function Confirmation({ booking, onReset }) {
     React.useEffect(() => {
-        const phone = "5354066204"; // Número correcto para Cuba
-        const text = `📅 NUEVO TURNO - UÑAS MÁGICAS\n👤 Cliente: ${booking.cliente_nombre}\n💅 Servicio: ${booking.servicio} (${booking.duracion} min)\n📆 Fecha: ${booking.fecha}\n⏰ Hora: ${booking.hora_inicio}`;
+        const phone = "5354066204"; // Número del dueño (Cuba)
+        const text = `📅 NUEVO TURNO - UÑAS MÁGICAS\n👤 Cliente: ${booking.cliente_nombre}\n📱 WhatsApp: ${booking.cliente_whatsapp}\n💅 Servicio: ${booking.servicio} (${booking.duracion} min)\n📆 Fecha: ${booking.fecha}\n⏰ Hora: ${booking.hora_inicio}`;
         const encodedText = encodeURIComponent(text);
         
         // Detectar si es iPhone/iPad
@@ -37,6 +37,13 @@ function Confirmation({ booking, onReset }) {
                         <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Nombre</div>
                         <div className="font-medium text-gray-900 text-lg">{booking.cliente_nombre}</div>
                     </div>
+                    
+                    {/* 🔥 NUEVO: Mostrar el WhatsApp que el cliente ingresó */}
+                    <div>
+                        <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">WhatsApp</div>
+                        <div className="font-medium text-gray-900">{booking.cliente_whatsapp}</div>
+                    </div>
+                    
                     <div>
                         <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Servicio</div>
                         <div className="font-medium text-gray-900">{booking.servicio}</div>
